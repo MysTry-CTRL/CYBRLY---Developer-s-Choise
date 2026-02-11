@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CYBRLY | HTML5 Projects</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+  <script id="CYBRLY-theme-init">
+    (function () {
+      try {
+        var session = JSON.parse(localStorage.getItem("CYBRLY_session") || "null");
+        if (!session || !session.loggedInUser) return;
+        var email = session.loggedInUser;
+        var prefs = JSON.parse(localStorage.getItem("CYBRLY_prefs") || "{}");
+        var users = JSON.parse(localStorage.getItem("CYBRLY_users") || "{}");
+        var theme = (prefs[email] && prefs[email].theme) || (users[email] && users[email].themePreference) || "dark";
+        if (theme === "light") {
+          document.documentElement.classList.add("light-mode");
+        }
+      } catch (e) {
+        // no-op
+      }
+    })();
+  </script>
+</head>
+<body data-page="service-detail">
+  <div class="bg-grid"></div>
+  <header class="site-header glass">
+    <div class="container nav">
+      <a class="nav-logo glow-text" href="index.html">CYBRLY</a>
+      <nav class="nav-links">
+        <a href="project.html">Projects</a>
+        <a href="service.html">Services</a>
+        <a href="template.html">Templates</a>
+      </nav>
+      <div class="nav-actions">
+  <button class="profile-trigger hidden" type="button" data-user-menu-trigger>
+    <span class="profile-avatar" data-profile-avatar>DP</span>
+    <span class="profile-meta">
+      <span class="profile-label">Logged in</span>
+      <span class="profile-email" data-profile-email>user@CYBRLY.io</span>
+    </span>
+  </button>
+  <a class="btn btn-ghost" href="login.html" data-auth-link="login">Login</a>
+  <a class="btn btn-primary" href="sign.html" data-auth-link="signup">Sign Up</a>
+</div>
+    </div>
+    <div class="scroll-indicator">
+      <span data-scroll-progress></span>
+    </div>
+  </header>
+  <div class="user-menu-overlay" data-user-overlay></div>
+  <div class="user-menu glass" data-user-menu>
+    <div class="user-menu-header">
+      <p class="eyebrow user-menu-role" data-user-role-label>User Access</p>
+      <h3 class="user-menu-title" data-user-menu-title>User Dashboard</h3>
+      <p class="user-menu-sub" data-user-menu-sub>Track your personal activity logs and settings.</p>
+    </div>
+    <div class="user-menu-info">
+  <span class="profile-avatar" data-user-avatar>DP</span>
+  <div>
+    <p class="profile-name" data-user-name>CYBRLY User</p>
+    <p class="profile-email" data-user-email>user@CYBRLY.io</p>
+    <p class="profile-bio" data-user-bio>Neon system builder.</p>
+    <div class="profile-meta-row">
+      <span class="role-badge" data-user-role-badge>User</span>
+      <span class="profile-time" data-user-meta>Member since --</span>
+    </div>
+  </div>
+</div>
+<div class="user-menu-actions">
+  <button class="btn btn-ghost" type="button" data-action="open-primary">User Dashboard</button>
+  <button class="btn btn-ghost" type="button" data-open-modal="profile-customize">Customize Profile</button>
+  <button class="btn btn-ghost" type="button" data-action="view-logs">View Activity Logs</button>
+  <a class="btn btn-ghost" href="project.html" data-admin-only>Upload Projects</a>
+  <a class="btn btn-ghost" href="template.html" data-admin-only>Upload Templates</a>
+  <button class="btn btn-danger-action" type="button" data-action="logout">Logout</button>
+</div>
+    <div class="user-menu-section" data-user-dashboard>
+      <div class="menu-stat">
+        <span>Total Visit Time</span>
+        <strong data-user-visit-time>0m</strong>
+      </div>
+      <div class="menu-stat">
+        <span>Number of Visits</span>
+        <strong data-user-visits>0</strong>
+      </div>
+      <div class="menu-stat">
+        <span>Purchase History</span>
+        <strong data-user-purchases>0</strong>
+      </div>
+      <div class="menu-log" data-user-purchase-list></div>
+      <h4>Activity Timeline</h4>
+      <div class="menu-log" data-user-timeline></div>
+    </div>
+    <div class="user-menu-section" data-admin-dashboard>
+      <div class="menu-stat">
+        <span>Total User Visits</span>
+        <strong data-admin-visits>0</strong>
+      </div>
+      <div class="menu-stat">
+        <span>Total Purchases</span>
+        <strong data-admin-purchases>0</strong>
+      </div>
+      <div class="menu-stat">
+        <span>Total Uploads</span>
+        <strong data-admin-uploads>0</strong>
+      </div>
+      <h4>Global Activity Timeline</h4>
+      <div class="menu-log" data-admin-log-list></div>
+    </div>
+    <div class="user-menu-section" data-customization>
+      <h4>Customization</h4>
+      <p>Adjust theme and layout density. More options will unlock over time.</p>
+      <div class="customization-grid">
+        <button class="btn btn-ghost" type="button" data-theme-set="light">
+          Switch to Light Mode
+          <span class="theme-note">Not recommended</span>
+        </button>
+        <button class="btn btn-ghost" type="button" data-theme-set="dark">
+          Switch to Dark Mode
+          <span class="theme-note">Recommended</span>
+        </button>
+        <button class="btn btn-ghost" type="button" data-pref-toggle="compact">Toggle Compact Layout</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page">
+    <section class="hero compact container">
+      <div class="hero-content reveal">
+        <p class="eyebrow">Service Detail</p>
+        <h1 class="section-title">HTML5 Projects</h1>
+        <p>High-end web builds with premium neon UI and clean animation.</p>
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="grid">
+        <article class="card glass reveal">
+          <h3>What I Provide</h3>
+          <p>Responsive landing pages, UI systems, polished animations, performance optimization, and deployment-ready builds.</p>
+        </article>
+        <article class="card glass reveal">
+          <h3>What the Client Should Provide</h3>
+          <p>Project brief, branding assets, content copy, references, and required features.</p>
+        </article>
+        <article class="card glass reveal">
+          <h3>How to Contact</h3>
+          <p>Email: abirxxdbrine2024@gmail.com</p>
+          <a class="link" href="mailto:abirxxdbrine2024@gmail.com">Send Email</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>CYBRLY © 2026.</p>
+      <div class="footer-links">
+        <a class="footer-icon" href="https://github.com/MysTry-CTRL" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2c-5.52 0-10 4.48-10 10 0 4.42 2.87 8.17 6.84 9.5.5.09.66-.22.66-.49v-1.72c-2.78.6-3.37-1.19-3.37-1.19-.45-1.15-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.36 1.08 2.94.82.09-.66.35-1.08.64-1.33-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.98 1.03-2.67-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.69 1.03 1.58 1.03 2.67 0 3.85-2.34 4.7-4.57 4.95.36.31.69.92.69 1.86v2.75c0 .27.16.59.67.49A10.02 10.02 0 0 0 22 12c0-5.52-4.48-10-10-10Z" />
+          </svg>
+        </a>
+        <a class="footer-icon" href="https://youtube.com/@MysTryReyal" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21.8 8.1a2.7 2.7 0 0 0-1.9-1.9C18.2 5.8 12 5.8 12 5.8s-6.2 0-7.9.4a2.7 2.7 0 0 0-1.9 1.9c-.4 1.7-.4 3.9-.4 3.9s0 2.2.4 3.9a2.7 2.7 0 0 0 1.9 1.9c1.7.4 7.9.4 7.9.4s6.2 0 7.9-.4a2.7 2.7 0 0 0 1.9-1.9c.4-1.7.4-3.9.4-3.9s0-2.2-.4-3.9ZM10 15.3V8.7l5.6 3.3L10 15.3Z" />
+          </svg>
+        </a>
+        <a class="footer-icon" href="https://instagram.com/_am_i_bishashable_" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm4.8-3.2a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <div class="modal" data-modal="profile-customize">
+    <div class="modal-content glass modal-customize">
+      <button class="modal-close" type="button" data-close-modal>&times;</button>
+      <p class="eyebrow">Profile Studio</p>
+      <h3>Customize Profile</h3>
+      <p class="muted">Personalize identity, appearance, interface, and privacy with instant live updates.</p>
+
+      <div class="customize-section">
+        <h4>Identity</h4>
+        <div class="customize-grid">
+          <div class="avatar-preview" data-avatar-preview>DP</div>
+          <div class="customize-fields">
+            <label>
+              Display Name (optional)
+              <input class="input" type="text" placeholder="Your display name" data-pref-field="displayName" />
+            </label>
+            <label>
+              Bio / Tagline
+              <input class="input" type="text" placeholder="Short, clean tagline" data-pref-field="bio" maxlength="140" />
+            </label>
+            <label>
+              Upload Avatar
+              <input class="input input-file" type="file" accept="image/*" data-avatar-input />
+            </label>
+            <button class="btn btn-ghost" type="button" data-avatar-reset>Use Auto Avatar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="customize-section">
+        <h4>Appearance</h4>
+        <div class="customize-grid">
+          <label>
+            Theme Mode
+            <select class="input" data-pref-field="theme">
+              <option value="dark">Dark (Recommended)</option>
+              <option value="light">Light (Not recommended)</option>
+            </select>
+          </label>
+          <label>
+            Accent Color
+            <input class="input" type="color" data-pref-field="accentColor" />
+          </label>
+          <label>
+            Neon Glow Intensity
+            <div class="range-row">
+              <input class="input" type="range" min="0" max="100" step="1" data-pref-field="glowIntensity" />
+              <span class="range-value" data-range-value="glowIntensity">70%</span>
+            </div>
+          </label>
+          <label>
+            Font Size Scaling
+            <div class="range-row">
+              <input class="input" type="range" min="0.85" max="1.2" step="0.05" data-pref-field="fontScale" />
+              <span class="range-value" data-range-value="fontScale">1.0x</span>
+            </div>
+          </label>
+          <label>
+            Card Border Radius
+            <div class="range-row">
+              <input class="input" type="range" min="12" max="32" step="1" data-pref-field="radius" />
+              <span class="range-value" data-range-value="radius">20px</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="customize-section">
+        <h4>Interface Preferences</h4>
+        <div class="customize-grid">
+          <label>
+            Animation Intensity
+            <select class="input" data-pref-field="animationIntensity">
+              <option value="full">Full Motion</option>
+              <option value="reduced">Reduced Motion</option>
+            </select>
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="respectReducedMotion" />
+            Respect System Reduced Motion
+          </label>
+          <label>
+            Layout Density
+            <select class="input" data-pref-field="layoutDensity">
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label>
+            Scroll Behavior
+            <select class="input" data-pref-field="scrollBehavior">
+              <option value="smooth">Smooth</option>
+              <option value="instant">Instant</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="customize-section">
+        <h4>Privacy & Visibility</h4>
+        <div class="customize-grid">
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="privacy.publicProfile" />
+            Public Profile
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="privacy.showEmail" />
+            Show Email
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="privacy.showActivity" />
+            Show Activity Logs
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="privacy.showDeviceSpecs" />
+            Show Device Specs
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="user.showPurchases" />
+            Show Purchase History
+          </label>
+        </div>
+      </div>
+
+      <div class="customize-section" data-user-only>
+        <h4>User Controls</h4>
+        <div class="customize-grid">
+          <label>
+            Dashboard Layout
+            <select class="input" data-pref-field="user.dashboardLayout">
+              <option value="standard">Standard</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" data-pref-field="user.notifications" />
+            Notifications Enabled
+          </label>
+        </div>
+      </div>
+
+      <div class="customize-section" data-admin-only>
+        <h4>Admin Controls</h4>
+        <div class="customize-grid">
+          <label>
+            Control Center Layout
+            <select class="input" data-pref-field="admin.controlCenterLayout">
+              <option value="standard">Standard</option>
+              <option value="focus">Focus Mode</option>
+            </select>
+          </label>
+          <label>
+            Log Verbosity
+            <select class="input" data-pref-field="admin.logVerbosity">
+              <option value="detailed">Detailed</option>
+              <option value="standard">Standard</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </label>
+          <label>
+            Default Upload Visibility
+            <select class="input" data-pref-field="admin.defaultUploadVisibility">
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
