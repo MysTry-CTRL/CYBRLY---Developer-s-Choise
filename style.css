@@ -97,6 +97,32 @@ body::before {
   z-index: -3;
 }
 
+body[data-page="login"]::after,
+body[data-page="signup"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body[data-page="login"]::after {
+  background: radial-gradient(circle at 20% 15%, rgba(var(--accent-rgb), 0.18), transparent 42%),
+    radial-gradient(circle at 82% 75%, rgba(157, 91, 255, 0.2), transparent 45%);
+  animation: loginAmbient 14s ease-in-out infinite alternate;
+}
+
+body[data-page="signup"]::after {
+  background: conic-gradient(
+      from 140deg at 20% 25%,
+      transparent 0deg,
+      rgba(157, 91, 255, 0.18) 120deg,
+      transparent 260deg
+    ),
+    radial-gradient(circle at 72% 22%, rgba(var(--accent-rgb), 0.22), transparent 42%);
+  animation: signupAmbient 16s linear infinite;
+}
+
 .bg-grid {
   position: fixed;
   inset: 0;
@@ -1520,6 +1546,37 @@ textarea.input {
   box-shadow: 0 12px 24px rgba(var(--accent-rgb), 0.12);
 }
 
+.owner-account-item {
+  gap: 8px;
+}
+
+.owner-account-item small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.owner-credential-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.owner-credential {
+  font-size: 0.78rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.owner-credential-toggle {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+}
+
 .menu-actions {
   display: flex;
   gap: 12px;
@@ -1573,6 +1630,12 @@ textarea.input {
   display: block;
   font-size: 0.7rem;
   letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.control-center-note {
+  margin-top: 6px;
+  font-size: 0.82rem;
   color: var(--muted);
 }
 
@@ -1691,6 +1754,21 @@ textarea.input {
 .otp-note {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+body.explorer-mode [data-explorer-blocked] {
+  opacity: 0.55;
+  filter: saturate(0.75);
+  cursor: not-allowed;
+}
+
+body.explorer-mode [data-explorer-blocked]:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.explorer-modal {
+  max-width: 560px;
 }
 
 [data-admin-only] {
@@ -1894,6 +1972,28 @@ textarea.input {
   100% {
     width: 20%;
     opacity: 0.6;
+  }
+}
+
+@keyframes loginAmbient {
+  0% {
+    transform: translate3d(-1%, -1%, 0) scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(1%, 1%, 0) scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes signupAmbient {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(360deg) scale(1.03);
+    opacity: 1;
   }
 }
 

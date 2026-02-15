@@ -2,8 +2,12 @@ const CYBRLYApp = (() => {
   const CONFIG = {
     adminEmail: "abirxxdbrine2024@gmail.com",
     adminPassword: "#youtuber#69#",
-    adminRole: "admin",
-    currencyLabel: "₺",
+    adminRole: "owner",
+    legacyAdminRole: "admin",
+    currencyLabel: "৳",
+    emailjsPublicKey: "",
+    emailjsServiceId: "",
+    emailjsTemplateId: "",
   };
 
   const STORAGE = {
@@ -19,6 +23,7 @@ const CYBRLYApp = (() => {
     adminLogs: "CYBRLY_admin_logs",
     specs: "CYBRLY_specs",
     prefs: "CYBRLY_prefs",
+    geo: "CYBRLY_geo_state",
   };
 
   const LEGACY_STORAGE = {
@@ -34,6 +39,7 @@ const CYBRLYApp = (() => {
     adminLogs: "devport_admin_logs",
     specs: "devport_specs",
     prefs: "devport_prefs",
+    geo: "devport_geo_state",
   };
 
   const DEFAULT_HISTORY = {
@@ -99,6 +105,11 @@ const CYBRLYApp = (() => {
   let sessionStartMs = null;
   let pendingDelete = null;
   let toastContainer = null;
+  let explorerState = {
+    mode: "full",
+    countryCode: "BD",
+    checkedAt: 0,
+  };
 
   const safeParse = (value, fallback) => {
     if (!value) return fallback;
@@ -211,6 +222,11 @@ const CYBRLYApp = (() => {
 
   const ensureAdmin = () => {
     const users = loadUsers();
+    Object.keys(users).forEach((email) => {
+      if (users[email]?.role === CONFIG.legacyAdminRole) {
+        users[email].role = CONFIG.adminRole;
+      }
+    });
     const existing = users[CONFIG.adminEmail];
     const createdAt = existing?.createdAt || new Date().toISOString();
     users[CONFIG.adminEmail] = {
@@ -270,7 +286,16 @@ const CYBRLYApp = (() => {
     saveSpecs(next);
   };
 
-  const getSession = () => safeParse(localStorage.getItem(STORAGE.session), null);
+  const getSession = () => {
+    const session = safeParse(localStorage.getItem(STORAGE.session), null);
+    if (!session) return null;
+    if (session.role === CONFIG.legacyAdminRole) {
+      const next = { ...session, role: CONFIG.adminRole };
+      localStorage.setItem(STORAGE.session, JSON.stringify(next));
+      return next;
+    }
+    return session;
+  };
 
   const setSession = (session) => {
     localStorage.setItem(STORAGE.session, JSON.stringify(session));
@@ -280,7 +305,8 @@ const CYBRLYApp = (() => {
     localStorage.removeItem(STORAGE.session);
   };
 
-  const isAdmin = (session) => session && session.role === CONFIG.adminRole;
+  const isAdmin = (session) =>
+    !!session && (session.role === CONFIG.adminRole || session.role === CONFIG.legacyAdminRole);
 
   const showMessage = (el, message, type = "info") => {
     if (!el) return;
@@ -342,6 +368,161 @@ const CYBRLYApp = (() => {
     el.classList.toggle("hidden", !isLoading);
   };
 
+  const getGeoState = () => {
+    const cached = loadObject(STORAGE.geo, null);
+    if (!cached || typeof cached !== "object") {
+      return { mode: "full", countryCode: "BD", checkedAt: 0 };
+    }
+    return {
+      mode: cached.mode === "explorer" ? "explorer" : "full",
+      countryCode: typeof cached.countryCode === "string" ? cached.countryCode : "BD",
+      checkedAt: Number(cached.checkedAt) || 0,
+    };
+  };
+
+  const saveGeoState = (state) => {
+    const normalized = {
+      mode: state?.mode === "explorer" ? "explorer" : "full",
+      countryCode: typeof state?.countryCode === "string" ? state.countryCode : "BD",
+      checkedAt: Number(state?.checkedAt) || Date.now(),
+    };
+    explorerState = normalized;
+    saveObject(STORAGE.geo, normalized);
+  };
+
+  const isExplorerMode = () => explorerState.mode === "explorer";
+
+  const isExplorerRestrictedPage = (page = document.body.dataset.page) =>
+    ["login", "signup", "template"].includes(page || "");
+
+  const detectCountryCode = async () => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 4500);
+    try {
+      const response = await fetch("https://ipapi.co/json/", {
+        method: "GET",
+        signal: controller.signal,
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        const code = (payload?.country_code || payload?.country || "").toString().toUpperCase();
+        if (code) return code;
+      }
+    } catch {
+      // fallback below
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (tz.toLowerCase().includes("dhaka")) return "BD";
+    return "UNKNOWN";
+  };
+
+  const resolveGeoState = async () => {
+    const cached = getGeoState();
+    const age = Date.now() - cached.checkedAt;
+    const isFresh = cached.checkedAt && age >= 0 && age < 1000 * 60 * 60 * 24;
+    if (isFresh) {
+      explorerState = cached;
+      return cached;
+    }
+
+    const code = await detectCountryCode();
+    const next = {
+      mode: code === "BD" ? "full" : "explorer",
+      countryCode: code || "UNKNOWN",
+      checkedAt: Date.now(),
+    };
+    saveGeoState(next);
+    return next;
+  };
+
+  const ensureExplorerModal = () => {
+    let modal = document.querySelector('[data-modal="explorer-mode"]');
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.className = "modal";
+    modal.dataset.modal = "explorer-mode";
+    modal.dataset.locked = "true";
+    modal.innerHTML = `
+      <div class="modal-content glass explorer-modal">
+        <h3>Explorer Mode Enabled</h3>
+        <p data-explorer-message>You are outside Bangladesh. Continue in Explorer Mode or return.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" type="button" data-explorer-continue>Continue Explorer Mode</button>
+          <button class="btn btn-primary" type="button" data-explorer-return>Return</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+  };
+
+  const showExplorerModal = (restrictedPage) => {
+    const modal = ensureExplorerModal();
+    const message = modal.querySelector("[data-explorer-message]");
+    if (message) {
+      message.textContent = restrictedPage
+        ? "You are outside Bangladesh. Login, registration, contact, and template vault are restricted in Explorer Mode."
+        : "You are outside Bangladesh. Explorer Mode lets you browse public content only.";
+    }
+    modal.dataset.locked = restrictedPage ? "true" : "false";
+    showModal(modal);
+    return modal;
+  };
+
+  const applyExplorerRestrictions = () => {
+    const active = isExplorerMode();
+    document.body.classList.toggle("explorer-mode", active);
+    if (!active) return;
+
+    const lockElements = (selector, reason) => {
+      document.querySelectorAll(selector).forEach((el) => {
+        el.dataset.explorerBlocked = reason;
+        if (el.tagName === "A") {
+          el.setAttribute("aria-disabled", "true");
+          el.setAttribute("tabindex", "-1");
+        }
+        if (el.tagName === "BUTTON") {
+          el.setAttribute("type", "button");
+        }
+      });
+    };
+
+    lockElements('[data-auth-link="login"], [data-auth-link="signup"]', "Authentication is disabled in Explorer Mode.");
+    lockElements('a[href="login.html"], a[href="sign.html"]', "Authentication is disabled in Explorer Mode.");
+    lockElements('[data-action="buy-templates"], a[href="template.html"], a[href="templates.html"]', "Template vault is unavailable in Explorer Mode.");
+    lockElements("[data-contact-form]", "Contact is available only for visitors inside Bangladesh.");
+  };
+
+  const setupExplorerInteractions = (restrictedPage) => {
+    if (!isExplorerMode()) return;
+    const modal = showExplorerModal(!!restrictedPage);
+    modal.querySelector("[data-explorer-continue]")?.addEventListener("click", () => {
+      hideModal(modal);
+      if (restrictedPage) {
+        window.location.href = "index.html";
+      }
+    });
+    modal.querySelector("[data-explorer-return]")?.addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      window.location.href = "index.html";
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!isExplorerMode()) return;
+      const blocked = event.target.closest("[data-explorer-blocked]");
+      if (!blocked) return;
+      event.preventDefault();
+      showToast(blocked.dataset.explorerBlocked || "Restricted in Explorer Mode.", "error");
+      showExplorerModal(isExplorerRestrictedPage());
+    });
+  };
+
   const initNav = () => {
     const session = getSession();
     const loginLink = document.querySelector('[data-auth-link="login"]');
@@ -372,7 +553,7 @@ const CYBRLYApp = (() => {
         const initials = initialsFor(session.loggedInUser);
         setAvatarElement(profileAvatar, prefs, initials);
       }
-      if (profileLabel) profileLabel.textContent = isAdmin(session) ? "Admin" : "User";
+      if (profileLabel) profileLabel.textContent = isAdmin(session) ? "Owner" : "User";
       if (loginLink) loginLink.classList.add("hidden");
       if (signupLink) signupLink.classList.add("hidden");
       logoutButtons.forEach((btn) => btn.classList.add("visible"));
@@ -402,6 +583,9 @@ const CYBRLYApp = (() => {
 
   const protectRoutes = () => {
     const page = document.body.dataset.page;
+    if (isExplorerMode() && isExplorerRestrictedPage(page)) {
+      return;
+    }
     if (page === "template") {
       const session = getSession();
       if (!session || !session.loggedInUser) {
@@ -436,6 +620,11 @@ const CYBRLYApp = (() => {
     document.querySelectorAll('[data-action="buy-templates"]').forEach((btn) => {
       btn.addEventListener("click", (event) => {
         event.preventDefault();
+        if (isExplorerMode()) {
+          showToast("Template vault is unavailable in Explorer Mode.", "error");
+          showExplorerModal(false);
+          return;
+        }
         const session = getSession();
         if (!session || !session.loggedInUser) {
           window.location.href = "login.html";
@@ -521,6 +710,8 @@ const CYBRLYApp = (() => {
     updateScrollLock();
   };
 
+  const canCloseModal = (modal) => modal?.dataset?.locked !== "true";
+
   const hideModal = (modal) => {
     if (!modal || !modal.classList.contains("show")) return;
     if (modal.dataset?.modal === "confirm-delete") {
@@ -555,7 +746,7 @@ const CYBRLYApp = (() => {
 
     document.querySelectorAll(".modal[data-modal]").forEach((modal) => {
       modal.addEventListener("click", (event) => {
-        if (event.target === modal) hideModal(modal);
+        if (event.target === modal && canCloseModal(modal)) hideModal(modal);
       });
     });
 
@@ -563,7 +754,9 @@ const CYBRLYApp = (() => {
       if (event.key === "Escape") {
         const openModals = document.querySelectorAll(".modal.show");
         if (!openModals.length) return;
-        openModals.forEach((modal) => hideModal(modal));
+        openModals.forEach((modal) => {
+          if (canCloseModal(modal)) hideModal(modal);
+        });
       }
 
       if (event.key === "Enter") {
@@ -755,6 +948,75 @@ const CYBRLYApp = (() => {
     addUserActivity(session.loggedInUser, "update", `Updated ${label}`, label);
   };
 
+  const escapeHtml = (value = "") =>
+    String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  const maskCredential = (value = "") => {
+    if (!value) return "--";
+    return "•".repeat(Math.max(6, Math.min(14, value.length)));
+  };
+
+  const renderOwnerAccounts = () => {
+    const dashboard = document.querySelector("[data-admin-dashboard]");
+    if (!dashboard) return;
+
+    let wrapper = dashboard.querySelector("[data-owner-accounts]");
+    let list = dashboard.querySelector("[data-owner-account-list]");
+    if (!wrapper || !list) {
+      wrapper = document.createElement("section");
+      wrapper.className = "owner-accounts";
+      wrapper.dataset.ownerAccounts = "true";
+
+      const title = document.createElement("h4");
+      title.textContent = "Registered Accounts";
+      wrapper.appendChild(title);
+
+      list = document.createElement("div");
+      list.className = "menu-log";
+      list.dataset.ownerAccountList = "true";
+      wrapper.appendChild(list);
+
+      dashboard.appendChild(wrapper);
+    }
+
+    const users = loadUsers();
+    const allPrefs = loadObject(STORAGE.prefs, {});
+    const entries = Object.entries(users).sort((a, b) => {
+      const left = new Date(a[1]?.createdAt || 0).getTime();
+      const right = new Date(b[1]?.createdAt || 0).getTime();
+      return right - left;
+    });
+
+    if (!entries.length) {
+      list.innerHTML = '<div class="menu-log-item"><span>No users yet</span>Registered accounts appear here.</div>';
+      return;
+    }
+
+    list.innerHTML = entries
+      .map(([accountEmail, info]) => {
+        const displayName = allPrefs?.[accountEmail]?.displayName?.trim() || "No display name";
+        const role = info?.role === CONFIG.adminRole || info?.role === CONFIG.legacyAdminRole ? "Owner" : "User";
+        const created = info?.createdAt ? new Date(info.createdAt).toLocaleString() : "--";
+        const password = info?.password || "";
+        return `
+          <div class="menu-log-item owner-account-item">
+            <span>${escapeHtml(accountEmail)}</span>
+            <small>${escapeHtml(displayName)} • ${role} • Created ${created}</small>
+            <div class="owner-credential-row">
+              <code class="owner-credential" data-owner-password data-password="${escapeHtml(password)}">${maskCredential(password)}</code>
+              <button class="btn btn-ghost owner-credential-toggle" type="button" data-owner-pass-toggle>Show</button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  };
+
   const refreshUserMenu = () => {
     const session = getSession();
     if (!session?.loggedInUser) return;
@@ -775,19 +1037,22 @@ const CYBRLYApp = (() => {
     const roleBadge = document.querySelector("[data-user-role-badge]");
     const metaLine = document.querySelector("[data-user-meta]");
     const primaryAction = document.querySelector('[data-action="open-primary"]');
+    const logAction = document.querySelector('[data-action="view-logs"]');
 
     if (isAdmin(session)) {
-      if (title) title.textContent = "Admin Control Center";
+      if (title) title.textContent = "Owner Control Center";
       if (sub) sub.textContent = "Centralized monitoring for users, purchases, uploads, and global activity.";
-      if (roleLabel) roleLabel.textContent = "Admin Access";
-      if (roleBadge) roleBadge.textContent = "Admin";
-      if (primaryAction) primaryAction.textContent = "Admin Control Center";
+      if (roleLabel) roleLabel.textContent = "Owner Access";
+      if (roleBadge) roleBadge.textContent = "Owner";
+      if (primaryAction) primaryAction.textContent = "Owner Control Center";
+      if (logAction) logAction.textContent = "Show All Logs";
     } else {
       if (title) title.textContent = "User Dashboard";
-      if (sub) sub.textContent = "Track your personal activity logs and settings.";
+      if (sub) sub.textContent = "Track your visit stats and purchase history.";
       if (roleLabel) roleLabel.textContent = "User Access";
       if (roleBadge) roleBadge.textContent = "User";
       if (primaryAction) primaryAction.textContent = "User Dashboard";
+      if (logAction) logAction.textContent = "View Purchases";
     }
 
     if (userEmail) userEmail.textContent = email;
@@ -801,7 +1066,7 @@ const CYBRLYApp = (() => {
     }
     if (userName) {
       const displayName = prefs.displayName?.trim();
-      userName.textContent = displayName || (isAdmin(session) ? "CYBRLY Admin" : "CYBRLY User");
+      userName.textContent = displayName || (isAdmin(session) ? "CYBRLY Owner" : "CYBRLY User");
     }
     if (userBio) {
       const bio = prefs.bio?.trim();
@@ -826,6 +1091,10 @@ const CYBRLYApp = (() => {
     const purchases = document.querySelector("[data-user-purchases]");
     const purchaseList = document.querySelector("[data-user-purchase-list]");
     const timelineList = document.querySelector("[data-user-timeline]");
+    const timelineHeading =
+      timelineList && timelineList.previousElementSibling?.tagName === "H4"
+        ? timelineList.previousElementSibling
+        : null;
 
     if (visitTime) visitTime.textContent = formatDuration(totalTime);
     if (visits) visits.textContent = String(record.visits || 0);
@@ -837,27 +1106,23 @@ const CYBRLYApp = (() => {
         purchaseList.innerHTML = '<div class="menu-log-item"><span>No purchases yet</span>Start building your template vault.</div>';
       } else {
         purchaseList.innerHTML = items
-          .slice(0, 6)
+          .slice(0, 8)
           .map(
             (item) =>
-              `<div class="menu-log-item"><span>${item.name}</span>${new Date(item.time).toLocaleString()}</div>`
+              `<div class="menu-log-item"><span>${escapeHtml(item.name)}</span>${new Date(item.time).toLocaleString()}</div>`
           )
           .join("");
       }
     }
 
     if (timelineList) {
-      const activity = Array.isArray(record.activities) ? record.activities : [];
-      if (!activity.length) {
-        timelineList.innerHTML = '<div class="menu-log-item"><span>No activity yet</span>Your timeline will appear here.</div>';
+      if (isAdmin(session)) {
+        timelineList.classList.remove("hidden");
+        if (timelineHeading) timelineHeading.classList.remove("hidden");
       } else {
-        timelineList.innerHTML = activity
-          .slice(0, 8)
-          .map(
-            (entry) =>
-              `<div class="menu-log-item"><span>${entry.message}</span>${new Date(entry.time).toLocaleString()}</div>`
-          )
-          .join("");
+        timelineList.innerHTML = "";
+        timelineList.classList.add("hidden");
+        if (timelineHeading) timelineHeading.classList.add("hidden");
       }
     }
 
@@ -883,11 +1148,12 @@ const CYBRLYApp = (() => {
             .slice(0, limit)
             .map(
               (entry) =>
-                `<div class="menu-log-item"><span>${entry.message}</span>${new Date(entry.time).toLocaleString()}</div>`
+                `<div class="menu-log-item"><span>${escapeHtml(entry.message || "Activity")}</span>${new Date(entry.time).toLocaleString()}</div>`
             )
             .join("");
         }
       }
+      renderOwnerAccounts();
     }
   };
 
@@ -942,6 +1208,19 @@ const CYBRLYApp = (() => {
     });
 
     menu.addEventListener("click", (event) => {
+      const passToggle = event.target.closest("[data-owner-pass-toggle]");
+      if (passToggle) {
+        const row = passToggle.closest(".owner-credential-row");
+        const code = row?.querySelector("[data-owner-password]");
+        if (!code) return;
+        const raw = code.dataset.password || "";
+        const isHidden = passToggle.dataset.state !== "show";
+        code.textContent = isHidden ? raw || "--" : maskCredential(raw);
+        passToggle.textContent = isHidden ? "Hide" : "Show";
+        passToggle.dataset.state = isHidden ? "show" : "hide";
+        return;
+      }
+
       const actionEl = event.target.closest("[data-action]");
       if (!actionEl) return;
       const action = actionEl.dataset.action;
@@ -965,7 +1244,7 @@ const CYBRLYApp = (() => {
           window.location.href = "logs.html";
           return;
         }
-        scrollMenuTo(menu.querySelector("[data-user-timeline]"));
+        scrollMenuTo(menu.querySelector("[data-user-purchase-list]"));
       }
     });
   };
@@ -1152,53 +1431,33 @@ const CYBRLYApp = (() => {
     });
   };
 
+  const stripLegacyControlCenterThemeControls = () => {
+    document.querySelectorAll("[data-theme-set], [data-pref-toggle]").forEach((el) => el.remove());
+    document.querySelectorAll("[data-customization]").forEach((section) => {
+      const copy = section.querySelector("p");
+      if (copy) {
+        copy.textContent = "Theme and layout settings are now managed inside Customize Profile.";
+      }
+      const grid = section.querySelector(".customization-grid");
+      if (!grid) return;
+      if (grid.querySelector(".control-center-note")) return;
+      const note = document.createElement("p");
+      note.className = "muted control-center-note";
+      note.textContent = "Open Customize Profile to change theme, density, and interface preferences.";
+      grid.appendChild(note);
+    });
+  };
+
   const setupPreferences = () => {
     const session = getSession();
+    stripLegacyControlCenterThemeControls();
     if (!session?.loggedInUser) return;
     const email = session.loggedInUser;
-    const getCurrentPrefs = () => loadPrefs(email);
-    let prefs = getCurrentPrefs();
+    const prefs = loadPrefs(email);
     applyPrefs(prefs);
     syncPrefButtons(prefs);
     syncThemeButtons(prefs);
     syncCustomizationFields(prefs);
-
-    document.querySelectorAll("[data-pref-toggle]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const key = btn.dataset.prefToggle;
-        const current = getCurrentPrefs();
-        if (key === "compact") {
-          const isCompact = getLayoutDensity(current) === "compact";
-          prefs = {
-            ...current,
-            layoutDensity: isCompact ? "comfortable" : "compact",
-            compact: !isCompact,
-          };
-        } else {
-          prefs = { ...current, [key]: !current[key] };
-        }
-        savePrefs(email, prefs);
-        applyPrefs(prefs);
-        syncPrefButtons(prefs);
-        syncCustomizationFields(prefs);
-      });
-    });
-
-    document.querySelectorAll("[data-theme-set]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const theme = btn.dataset.themeSet;
-        if (!theme) return;
-        const current = getCurrentPrefs();
-        if (current.theme === theme) return;
-        prefs = { ...current, theme };
-        savePrefs(email, prefs);
-        applyPrefs(prefs);
-        syncThemeButtons(prefs);
-        syncCustomizationFields(prefs);
-        logThemeChange(theme);
-        showToast("Theme saved.", "success");
-      });
-    });
   };
 
   const setupProfileCustomization = () => {
@@ -1208,6 +1467,37 @@ const CYBRLYApp = (() => {
     const modal = document.querySelector('[data-modal="profile-customize"]');
     if (!modal) return;
     let prefs = loadPrefs(email);
+    let autoCloseTimer = null;
+    let clearStatusTimer = null;
+
+    let status = modal.querySelector("[data-customize-status]");
+    if (!status) {
+      status = document.createElement("div");
+      status.className = "form-message";
+      status.dataset.customizeStatus = "true";
+      const intro = modal.querySelector(".muted");
+      if (intro?.parentElement) {
+        intro.insertAdjacentElement("afterend", status);
+      } else {
+        modal.querySelector(".modal-content")?.prepend(status);
+      }
+    }
+
+    const setStatus = (text, type = "success") => {
+      if (!status) return;
+      showMessage(status, text, type);
+      if (clearStatusTimer) window.clearTimeout(clearStatusTimer);
+      clearStatusTimer = window.setTimeout(() => showMessage(status, "", "info"), 1600);
+    };
+
+    const scheduleAutoClose = () => {
+      if (autoCloseTimer) window.clearTimeout(autoCloseTimer);
+      autoCloseTimer = window.setTimeout(() => {
+        if (modal.classList.contains("show")) {
+          hideModal(modal);
+        }
+      }, 1100);
+    };
 
     const applyAndSync = (next, options = {}) => {
       prefs = next;
@@ -1220,8 +1510,9 @@ const CYBRLYApp = (() => {
       initNav();
       if (options.logTheme) {
         logThemeChange(prefs.theme);
-        showToast("Theme saved.", "success");
       }
+      setStatus("Saved automatically.", "success");
+      scheduleAutoClose();
     };
 
     const handleFieldChange = (field) => {
@@ -1292,6 +1583,8 @@ const CYBRLYApp = (() => {
     document.querySelectorAll('[data-open-modal="profile-customize"]').forEach((btn) => {
       btn.addEventListener("click", () => {
         prefs = loadPrefs(email);
+        if (autoCloseTimer) window.clearTimeout(autoCloseTimer);
+        showMessage(status, "", "info");
         syncCustomizationFields(prefs);
       });
     });
@@ -2238,7 +2531,7 @@ const CYBRLYApp = (() => {
         const copy = emptyState.querySelector("p");
         if (templates.length === 0) {
           if (heading) heading.textContent = "No templates available yet";
-          if (copy) copy.textContent = "Admin uploads will appear here once the vault is populated.";
+          if (copy) copy.textContent = "Owner uploads will appear here once the vault is populated.";
         } else if (!adminView && !hasPublic) {
           if (heading) heading.textContent = "No public templates yet";
           if (copy) copy.textContent = "Templates will appear here once they are published.";
@@ -2636,6 +2929,11 @@ const CYBRLYApp = (() => {
     document.addEventListener("click", (event) => {
       const button = event.target.closest("[data-template-purchase]");
       if (!button) return;
+      if (isExplorerMode()) {
+        showToast("Template purchases are unavailable in Explorer Mode.", "error");
+        showExplorerModal(true);
+        return;
+      }
       const name = button.dataset.templatePurchase || "Template";
       logPurchase(name);
       showToast("Purchase recorded.", "success");
@@ -2646,6 +2944,12 @@ const CYBRLYApp = (() => {
     document.querySelectorAll("[data-contact-form]").forEach((form) => {
       const message = form.querySelector("[data-contact-message]");
       form.addEventListener("submit", (event) => {
+        if (isExplorerMode()) {
+          event.preventDefault();
+          showMessage(message, "Contact form is available only inside Bangladesh.", "error");
+          showToast("Contact is restricted in Explorer Mode.", "error");
+          return;
+        }
         if (!form.checkValidity()) {
           event.preventDefault();
           form.reportValidity();
@@ -2666,6 +2970,11 @@ const CYBRLYApp = (() => {
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (isExplorerMode()) {
+        showMessage(message, "Login is unavailable in Explorer Mode.", "error");
+        showExplorerModal(true);
+        return;
+      }
       const email = form.querySelector('[name="email"]').value.trim().toLowerCase();
       const password = form.querySelector('[name="password"]').value;
       const users = loadUsers();
@@ -2689,7 +2998,7 @@ const CYBRLYApp = (() => {
       showMessage(message, "Access granted. Redirecting...", "success");
 
       setTimeout(() => {
-        window.location.href = session.role === CONFIG.adminRole ? "template.html" : "index.html";
+        window.location.href = isAdmin(session) ? "template.html" : "index.html";
       }, 600);
     });
   };
@@ -2704,6 +3013,51 @@ const CYBRLYApp = (() => {
     hideModal(modal);
   };
 
+  const hashOtp = async (otp) => {
+    if (!otp) return "";
+    if (window.crypto?.subtle && window.TextEncoder) {
+      const encoded = new TextEncoder().encode(otp);
+      const digest = await window.crypto.subtle.digest("SHA-256", encoded);
+      return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    }
+    return btoa(otp);
+  };
+
+  const getEmailJsConfig = () => {
+    const override = window.CYBRLY_EMAILJS || {};
+    return {
+      publicKey: override.publicKey || CONFIG.emailjsPublicKey,
+      serviceId: override.serviceId || CONFIG.emailjsServiceId,
+      templateId: override.templateId || CONFIG.emailjsTemplateId,
+    };
+  };
+
+  let emailJsInitialized = false;
+
+  const sendOtpEmail = async (email, otp) => {
+    const config = getEmailJsConfig();
+    if (!config.publicKey || !config.serviceId || !config.templateId) {
+      throw new Error("OTP email service is not configured.");
+    }
+    if (!window.emailjs || typeof window.emailjs.send !== "function") {
+      throw new Error("EmailJS SDK is missing.");
+    }
+
+    if (!emailJsInitialized) {
+      window.emailjs.init({ publicKey: config.publicKey });
+      emailJsInitialized = true;
+    }
+
+    await window.emailjs.send(config.serviceId, config.templateId, {
+      to_email: email,
+      user_email: email,
+      otp: otp,
+      otp_code: otp,
+    });
+  };
+
   const setupSignup = () => {
     const form = document.querySelector("[data-signup-form]");
     if (!form) return;
@@ -2712,7 +3066,6 @@ const CYBRLYApp = (() => {
     const modal = document.querySelector("[data-otp-modal]");
     const otpInput = document.querySelector("[data-otp-input]");
     const otpVerify = document.querySelector("[data-otp-verify]");
-    const otpDisplay = document.querySelector("[data-otp-display]");
     const otpMessage = document.querySelector("[data-otp-message]");
     const closeBtn = document.querySelector("[data-otp-close]");
 
@@ -2727,13 +3080,18 @@ const CYBRLYApp = (() => {
     }
 
     const pending = safeParse(localStorage.getItem(STORAGE.pendingOtp), null);
-    if (pending?.email && otpDisplay) {
-      otpDisplay.textContent = pending.otp;
+    if (pending?.email) {
+      showMessage(otpMessage, "A verification request is pending. Enter your OTP.", "info");
       openOtpModal();
     }
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (isExplorerMode()) {
+        showMessage(message, "Registration is unavailable in Explorer Mode.", "error");
+        showExplorerModal(true);
+        return;
+      }
       const email = form.querySelector('[name="email"]').value.trim().toLowerCase();
       const password = form.querySelector('[name="password"]').value;
       const confirm = form.querySelector('[name="confirm"]').value;
@@ -2745,7 +3103,7 @@ const CYBRLYApp = (() => {
       }
 
       if (email === CONFIG.adminEmail) {
-        showMessage(message, "This email is reserved for admin.", "error");
+        showMessage(message, "This email is reserved for the Owner account.", "error");
         return;
       }
 
@@ -2760,22 +3118,32 @@ const CYBRLYApp = (() => {
       }
 
       const otp = String(Math.floor(100000 + Math.random() * 900000));
+      const otpHash = await hashOtp(otp);
       const pendingRecord = {
         email,
         password,
-        otp,
+        otpHash,
         createdAt: new Date().toISOString(),
       };
 
+      showMessage(message, "Sending OTP to your email...", "info");
+      try {
+        await sendOtpEmail(email, otp);
+      } catch (error) {
+        showMessage(message, "Unable to send OTP email. Check EmailJS configuration.", "error");
+        showMessage(otpMessage, "OTP email delivery failed. Please retry signup.", "error");
+        return;
+      }
+
       localStorage.setItem(STORAGE.pendingOtp, JSON.stringify(pendingRecord));
-      if (otpDisplay) otpDisplay.textContent = otp;
       if (otpInput) otpInput.value = "";
-      showMessage(message, "OTP generated. Verify to activate.", "success");
+      showMessage(message, "OTP sent. Verify to activate your account.", "success");
+      showMessage(otpMessage, "Enter the OTP sent to your email.", "info");
       openOtpModal();
     });
 
     if (otpVerify) {
-      otpVerify.addEventListener("click", () => {
+      otpVerify.addEventListener("click", async () => {
         const pendingRecord = safeParse(localStorage.getItem(STORAGE.pendingOtp), null);
         if (!pendingRecord) {
           showMessage(otpMessage, "No pending verification.", "error");
@@ -2783,7 +3151,24 @@ const CYBRLYApp = (() => {
         }
 
         const entered = (otpInput?.value || "").trim();
-        if (entered !== pendingRecord.otp) {
+        if (!entered) {
+          showMessage(otpMessage, "Enter the OTP first.", "error");
+          return;
+        }
+
+        const issuedAt = new Date(pendingRecord.createdAt || 0).getTime();
+        if (Number.isFinite(issuedAt) && Date.now() - issuedAt > 10 * 60 * 1000) {
+          localStorage.removeItem(STORAGE.pendingOtp);
+          showMessage(otpMessage, "OTP expired. Please sign up again.", "error");
+          return;
+        }
+
+        const enteredHash = await hashOtp(entered);
+        const valid =
+          (pendingRecord.otpHash && enteredHash === pendingRecord.otpHash) ||
+          (pendingRecord.otp && entered === pendingRecord.otp);
+
+        if (!valid) {
           showMessage(otpMessage, "Invalid OTP.", "error");
           return;
         }
@@ -2810,7 +3195,7 @@ const CYBRLYApp = (() => {
   };
 
   return {
-    init() {
+    async init() {
       migrateLegacyStorage();
       ensureAdmin();
       ensureProjectSeed();
@@ -2818,6 +3203,10 @@ const CYBRLYApp = (() => {
       ensureClientsSeed();
       ensureHistorySeed();
       ensureSpecsSeed();
+      explorerState = getGeoState();
+      await resolveGeoState();
+      applyExplorerRestrictions();
+      const restrictedExplorerPage = isExplorerMode() && isExplorerRestrictedPage();
       initNav();
       setupLogout();
       protectRoutes();
@@ -2830,6 +3219,7 @@ const CYBRLYApp = (() => {
       setupUserMenu();
       setupPreferences();
       setupProfileCustomization();
+      setupExplorerInteractions(restrictedExplorerPage);
       setupOnboarding();
       setupStatsSync();
       ensureToastContainer();
@@ -2869,4 +3259,3 @@ const CYBRLYApp = (() => {
 document.addEventListener("DOMContentLoaded", () => {
   CYBRLYApp.init();
 });
-
