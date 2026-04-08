@@ -1,9 +1,10 @@
-const CYBRLYApp = (() => {
+const CodexiaApp = (() => {
   const CONFIG = {
     adminEmail: "abirxxdbrine2024@gmail.com",
     adminPassword: "#youtuber#69#",
     adminRole: "owner",
     legacyAdminRole: "admin",
+    maintenanceMode: true,
     currencyLabel: "৳",
     emailjsPublicKey: "",
     emailjsServiceId: "",
@@ -11,41 +12,58 @@ const CYBRLYApp = (() => {
   };
 
   const STORAGE = {
-    users: "CYBRLY_users",
-    session: "CYBRLY_session",
-    pendingOtp: "CYBRLY_pending_otp",
-    projects: "CYBRLY_projects",
-    templates: "CYBRLY_templates",
-    systems: "CYBRLY_systems",
-    clients: "CYBRLY_clients",
-    history: "CYBRLY_history",
-    userLogs: "CYBRLY_user_logs",
-    adminLogs: "CYBRLY_admin_logs",
-    specs: "CYBRLY_specs",
-    prefs: "CYBRLY_prefs",
-    geo: "CYBRLY_geo_state",
+    users: "Codexia_users",
+    session: "Codexia_session",
+    pendingOtp: "Codexia_pending_otp",
+    projects: "Codexia_projects",
+    templates: "Codexia_templates",
+    systems: "Codexia_systems",
+    clients: "Codexia_clients",
+    history: "Codexia_history",
+    userLogs: "Codexia_user_logs",
+    adminLogs: "Codexia_admin_logs",
+    specs: "Codexia_specs",
+    prefs: "Codexia_prefs",
+    geo: "Codexia_geo_state",
   };
 
-  const LEGACY_STORAGE = {
-    users: "devport_users",
-    session: "devport_session",
-    pendingOtp: "devport_pending_otp",
-    projects: "devport_projects",
-    templates: "devport_templates",
-    systems: "devport_systems",
-    clients: "devport_clients",
-    history: "devport_history",
-    userLogs: "devport_user_logs",
-    adminLogs: "devport_admin_logs",
-    specs: "devport_specs",
-    prefs: "devport_prefs",
-    geo: "devport_geo_state",
-  };
+  const LEGACY_STORAGE_SETS = [
+    {
+      users: "CYBRLY_users",
+      session: "CYBRLY_session",
+      pendingOtp: "CYBRLY_pending_otp",
+      projects: "CYBRLY_projects",
+      templates: "CYBRLY_templates",
+      systems: "CYBRLY_systems",
+      clients: "CYBRLY_clients",
+      history: "CYBRLY_history",
+      userLogs: "CYBRLY_user_logs",
+      adminLogs: "CYBRLY_admin_logs",
+      specs: "CYBRLY_specs",
+      prefs: "CYBRLY_prefs",
+      geo: "CYBRLY_geo_state",
+    },
+    {
+      users: "devport_users",
+      session: "devport_session",
+      pendingOtp: "devport_pending_otp",
+      projects: "devport_projects",
+      templates: "devport_templates",
+      systems: "devport_systems",
+      clients: "devport_clients",
+      history: "devport_history",
+      userLogs: "devport_user_logs",
+      adminLogs: "devport_admin_logs",
+      specs: "devport_specs",
+      prefs: "devport_prefs",
+      geo: "devport_geo_state",
+    },
+  ];
 
   const DEFAULT_HISTORY = {
     years: 1,
     essay:
-      "I began coding with a focus on structure, clarity, and systems that scale. Each year has pushed me to build cleaner architecture, stronger UI logic, and workflows that stay reliable under real use. CYBRLY tracks that journey with a focus on intentional builds, measurable growth, and a calm, predictable experience for every user.",
+      "I began coding with a focus on structure, clarity, and systems that scale. Each year has pushed me to build cleaner architecture, stronger UI logic, and workflows that stay reliable under real use. Codexia tracks that journey with a focus on intentional builds, measurable growth, and a calm, predictable experience for every user.",
     milestones: [],
   };
 
@@ -121,6 +139,26 @@ const CYBRLYApp = (() => {
     }
   };
 
+  const applyMaintenanceMode = () => {
+    document.body.classList.add("maintenance-mode", "loaded");
+
+    let overlay = document.querySelector("[data-maintenance-overlay]");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "maintenance-overlay";
+      overlay.dataset.maintenanceOverlay = "true";
+      overlay.innerHTML = `
+        <div class="maintenance-card glass">
+          <p class="eyebrow">Site Disabled</p>
+          <h1>Codexia is temporarily offline</h1>
+          <p>This site has been disabled. The developers are working on a better version of it.</p>
+          <p class="maintenance-note">Please check back later.</p>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+  };
+
   const loadUsers = () => safeParse(localStorage.getItem(STORAGE.users), {});
 
   const saveUsers = (users) => {
@@ -146,35 +184,37 @@ const CYBRLYApp = (() => {
   };
 
   const migrateLegacyStorage = () => {
-    Object.keys(LEGACY_STORAGE).forEach((key) => {
-      const legacyKey = LEGACY_STORAGE[key];
-      const nextKey = STORAGE[key];
-      if (!legacyKey || !nextKey) return;
-      const currentRaw = localStorage.getItem(nextKey);
-      const legacyRaw = localStorage.getItem(legacyKey);
-      if (legacyRaw === null) return;
-      if (currentRaw === null) {
-        localStorage.setItem(nextKey, legacyRaw);
-        return;
-      }
-      const currentParsed = safeParse(currentRaw, null);
-      const legacyParsed = safeParse(legacyRaw, null);
-      const isEmptyArray = Array.isArray(currentParsed) && currentParsed.length === 0;
-      const isEmptyObject =
-        currentParsed &&
-        typeof currentParsed === "object" &&
-        !Array.isArray(currentParsed) &&
-        Object.keys(currentParsed).length === 0;
-      const legacyHasArrayData = Array.isArray(legacyParsed) && legacyParsed.length > 0;
-      const legacyHasObjectData =
-        legacyParsed &&
-        typeof legacyParsed === "object" &&
-        !Array.isArray(legacyParsed) &&
-        Object.keys(legacyParsed).length > 0;
+    LEGACY_STORAGE_SETS.forEach((legacyStorage) => {
+      Object.keys(legacyStorage).forEach((key) => {
+        const legacyKey = legacyStorage[key];
+        const nextKey = STORAGE[key];
+        if (!legacyKey || !nextKey) return;
+        const currentRaw = localStorage.getItem(nextKey);
+        const legacyRaw = localStorage.getItem(legacyKey);
+        if (legacyRaw === null) return;
+        if (currentRaw === null) {
+          localStorage.setItem(nextKey, legacyRaw);
+          return;
+        }
+        const currentParsed = safeParse(currentRaw, null);
+        const legacyParsed = safeParse(legacyRaw, null);
+        const isEmptyArray = Array.isArray(currentParsed) && currentParsed.length === 0;
+        const isEmptyObject =
+          currentParsed &&
+          typeof currentParsed === "object" &&
+          !Array.isArray(currentParsed) &&
+          Object.keys(currentParsed).length === 0;
+        const legacyHasArrayData = Array.isArray(legacyParsed) && legacyParsed.length > 0;
+        const legacyHasObjectData =
+          legacyParsed &&
+          typeof legacyParsed === "object" &&
+          !Array.isArray(legacyParsed) &&
+          Object.keys(legacyParsed).length > 0;
 
-      if ((isEmptyArray && legacyHasArrayData) || (isEmptyObject && legacyHasObjectData)) {
-        localStorage.setItem(nextKey, legacyRaw);
-      }
+        if ((isEmptyArray && legacyHasArrayData) || (isEmptyObject && legacyHasObjectData)) {
+          localStorage.setItem(nextKey, legacyRaw);
+        }
+      });
     });
   };
 
@@ -523,7 +563,76 @@ const CYBRLYApp = (() => {
     });
   };
 
+  const ensureTopbarControls = () => {
+    const navActions = document.querySelector(".nav-actions");
+    const profileTrigger = document.querySelector("[data-user-menu-trigger]");
+    if (!navActions || !profileTrigger) return {};
+
+    let accountPill = navActions.querySelector("[data-account-pill]");
+    let notificationTrigger = navActions.querySelector("[data-notification-trigger]");
+
+    if (!accountPill) {
+      accountPill = document.createElement("div");
+      accountPill.className = "account-pill hidden";
+      accountPill.dataset.accountPill = "true";
+
+      notificationTrigger = document.createElement("button");
+      notificationTrigger.type = "button";
+      notificationTrigger.className = "notification-trigger";
+      notificationTrigger.dataset.notificationTrigger = "true";
+      notificationTrigger.setAttribute("aria-label", "Open owner updates");
+      notificationTrigger.setAttribute("aria-haspopup", "dialog");
+      notificationTrigger.setAttribute("aria-expanded", "false");
+      notificationTrigger.innerHTML = `
+        <svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+          <path d="M10 17a2 2 0 0 0 4 0" />
+        </svg>
+        <span class="notification-count hidden" data-notification-count>0</span>
+      `;
+
+      const anchor = navActions.querySelector('[data-auth-link="login"]') || navActions.firstElementChild;
+      if (anchor) {
+        navActions.insertBefore(accountPill, anchor);
+      } else {
+        navActions.appendChild(accountPill);
+      }
+
+      accountPill.appendChild(notificationTrigger);
+      accountPill.appendChild(profileTrigger);
+    }
+
+    let notificationMenu = document.querySelector("[data-notification-menu]");
+    if (!notificationMenu) {
+      notificationMenu = document.createElement("div");
+      notificationMenu.className = "notification-menu glass";
+      notificationMenu.dataset.notificationMenu = "true";
+      notificationMenu.innerHTML = `
+        <div class="notification-menu-header">
+          <p class="eyebrow">Owner Updates</p>
+          <h3 class="user-menu-title" data-notification-menu-title>Latest Uploads</h3>
+          <p class="notification-menu-sub" data-notification-menu-sub>Fresh uploads from the owner will appear here.</p>
+        </div>
+        <div class="notification-empty" data-notification-empty>
+          <span>No uploads yet</span>
+          Owner releases will appear here as soon as something new goes live.
+        </div>
+        <div class="notification-list" data-notification-list></div>
+      `;
+
+      const userMenu = document.querySelector("[data-user-menu]");
+      if (userMenu?.parentElement) {
+        userMenu.insertAdjacentElement("afterend", notificationMenu);
+      } else {
+        document.body.appendChild(notificationMenu);
+      }
+    }
+
+    return { accountPill, notificationTrigger, notificationMenu };
+  };
+
   const initNav = () => {
+    const { accountPill, notificationTrigger, notificationMenu } = ensureTopbarControls();
     const session = getSession();
     const loginLink = document.querySelector('[data-auth-link="login"]');
     const signupLink = document.querySelector('[data-auth-link="signup"]');
@@ -544,6 +653,7 @@ const CYBRLYApp = (() => {
     if (session?.loggedInUser) {
       const prefs = loadPrefs(session.loggedInUser);
       const displayName = prefs.displayName?.trim();
+      if (accountPill) accountPill.classList.remove("hidden");
       if (profileTrigger) profileTrigger.classList.remove("hidden");
       if (profileEmail) {
         profileEmail.textContent = displayName || session.loggedInUser;
@@ -553,11 +663,21 @@ const CYBRLYApp = (() => {
         const initials = initialsFor(session.loggedInUser);
         setAvatarElement(profileAvatar, prefs, initials);
       }
+      if (profileTrigger) {
+        profileTrigger.title = displayName || session.loggedInUser;
+        profileTrigger.setAttribute(
+          "aria-label",
+          `Open ${isAdmin(session) ? "owner" : "user"} menu`
+        );
+      }
       if (profileLabel) profileLabel.textContent = isAdmin(session) ? "Owner" : "User";
       if (loginLink) loginLink.classList.add("hidden");
       if (signupLink) signupLink.classList.add("hidden");
       logoutButtons.forEach((btn) => btn.classList.add("visible"));
+      if (notificationTrigger) notificationTrigger.disabled = false;
+      refreshNotificationsMenu();
     } else {
+      if (accountPill) accountPill.classList.add("hidden");
       if (profileTrigger) profileTrigger.classList.add("hidden");
       if (profileEmail) profileEmail.textContent = "";
       if (profileAvatar) {
@@ -568,6 +688,19 @@ const CYBRLYApp = (() => {
       if (loginLink) loginLink.classList.remove("hidden");
       if (signupLink) signupLink.classList.remove("hidden");
       logoutButtons.forEach((btn) => btn.classList.remove("visible"));
+      if (notificationTrigger) {
+        notificationTrigger.disabled = true;
+        notificationTrigger.classList.remove("has-updates");
+        notificationTrigger.setAttribute("aria-expanded", "false");
+      }
+      const notificationCount = document.querySelector("[data-notification-count]");
+      if (notificationCount) {
+        notificationCount.textContent = "0";
+        notificationCount.classList.add("hidden");
+      }
+      if (notificationMenu) {
+        notificationMenu.classList.remove("open");
+      }
     }
   };
 
@@ -828,6 +961,7 @@ const CYBRLYApp = (() => {
     logs.activities.unshift(entry);
     logs.activities = logs.activities.slice(0, 60);
     saveAdminLogs(logs);
+    refreshNotificationsMenu();
   };
 
   const formatDuration = (ms) => {
@@ -1017,6 +1151,71 @@ const CYBRLYApp = (() => {
       .join("");
   };
 
+  const refreshNotificationsMenu = () => {
+    const session = getSession();
+    const notificationTrigger = document.querySelector("[data-notification-trigger]");
+    const notificationList = document.querySelector("[data-notification-list]");
+    const notificationEmpty = document.querySelector("[data-notification-empty]");
+    const notificationCount = document.querySelector("[data-notification-count]");
+    const notificationTitle = document.querySelector("[data-notification-menu-title]");
+    const notificationSub = document.querySelector("[data-notification-menu-sub]");
+    if (!notificationTrigger || !notificationList || !notificationEmpty) return;
+
+    const uploads = (Array.isArray(getAdminLogs().activities) ? getAdminLogs().activities : []).filter(
+      (entry) => entry?.type === "upload"
+    );
+    const uploadCount = uploads.length;
+
+    if (notificationTitle) notificationTitle.textContent = "Latest Uploads";
+    if (notificationSub) {
+      notificationSub.textContent = isAdmin(session)
+        ? "Your published uploads are collected here for quick review."
+        : "Recent owner uploads are collected here so you can see what is new.";
+    }
+
+    if (!session?.loggedInUser) {
+      notificationList.innerHTML = "";
+      notificationEmpty.classList.remove("hidden");
+      notificationEmpty.innerHTML = "<span>Sign in to view updates</span>Owner uploads become available here once you are logged in.";
+      if (notificationCount) {
+        notificationCount.textContent = "0";
+        notificationCount.classList.add("hidden");
+      }
+      notificationTrigger.classList.remove("has-updates");
+      notificationTrigger.title = "Open owner updates";
+      return;
+    }
+
+    if (!uploadCount) {
+      notificationList.innerHTML = "";
+      notificationEmpty.classList.remove("hidden");
+      notificationEmpty.innerHTML = "<span>No uploads yet</span>Owner releases will appear here as soon as something new goes live.";
+    } else {
+      notificationEmpty.classList.add("hidden");
+      notificationList.innerHTML = uploads
+        .map((entry) => {
+          const actor = entry.email ? escapeHtml(entry.email) : "Owner";
+          const target = escapeHtml(entry.target || "New upload");
+          const time = entry.time ? new Date(entry.time).toLocaleString() : "Just now";
+          return `
+            <article class="notification-item">
+              <span>New upload: ${target}</span>
+              <small>${actor} • ${time}</small>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    if (notificationCount) {
+      notificationCount.textContent = uploadCount > 99 ? "99+" : String(uploadCount);
+      notificationCount.classList.toggle("hidden", uploadCount === 0);
+    }
+    notificationTrigger.classList.toggle("has-updates", uploadCount > 0);
+    notificationTrigger.title =
+      uploadCount > 0 ? `${uploadCount} owner update${uploadCount === 1 ? "" : "s"}` : "Open owner updates";
+  };
+
   const refreshUserMenu = () => {
     const session = getSession();
     if (!session?.loggedInUser) return;
@@ -1066,7 +1265,7 @@ const CYBRLYApp = (() => {
     }
     if (userName) {
       const displayName = prefs.displayName?.trim();
-      userName.textContent = displayName || (isAdmin(session) ? "CYBRLY Owner" : "CYBRLY User");
+      userName.textContent = displayName || (isAdmin(session) ? "Codexia Owner" : "Codexia User");
     }
     if (userBio) {
       const bio = prefs.bio?.trim();
@@ -1155,19 +1354,25 @@ const CYBRLYApp = (() => {
       }
       renderOwnerAccounts();
     }
+
+    refreshNotificationsMenu();
   };
 
   const updateScrollLock = () => {
     const modalOpen = !!document.querySelector(".modal.show");
     const menuOpen = document.querySelector("[data-user-menu]")?.classList.contains("open");
-    document.body.classList.toggle("modal-open", modalOpen || menuOpen);
+    const notificationOpen = document.querySelector("[data-notification-menu]")?.classList.contains("open");
+    document.body.classList.toggle("modal-open", modalOpen || menuOpen || notificationOpen);
   };
 
   const setupUserMenu = () => {
+    ensureTopbarControls();
     const trigger = document.querySelector("[data-user-menu-trigger]");
+    const notificationTrigger = document.querySelector("[data-notification-trigger]");
     const menu = document.querySelector("[data-user-menu]");
+    const notificationMenu = document.querySelector("[data-notification-menu]");
     const overlay = document.querySelector("[data-user-overlay]");
-    if (!trigger || !menu || !overlay) return;
+    if (!trigger || !notificationTrigger || !menu || !notificationMenu || !overlay) return;
 
     const scrollMenuTo = (target) => {
       if (!target) return;
@@ -1175,35 +1380,63 @@ const CYBRLYApp = (() => {
       menu.scrollTo({ top, behavior: "smooth" });
     };
 
-    const closeMenu = () => {
+    const closeMenus = () => {
       menu.classList.remove("open");
+      notificationMenu.classList.remove("open");
       overlay.classList.remove("show");
+      trigger.setAttribute("aria-expanded", "false");
+      notificationTrigger.setAttribute("aria-expanded", "false");
       updateScrollLock();
     };
 
     const openMenu = () => {
       refreshUserMenu();
+      notificationMenu.classList.remove("open");
       menu.classList.add("open");
       overlay.classList.add("show");
+      trigger.setAttribute("aria-expanded", "true");
+      notificationTrigger.setAttribute("aria-expanded", "false");
+      updateScrollLock();
+    };
+
+    const openNotifications = () => {
+      refreshNotificationsMenu();
+      menu.classList.remove("open");
+      notificationMenu.classList.add("open");
+      overlay.classList.add("show");
+      trigger.setAttribute("aria-expanded", "false");
+      notificationTrigger.setAttribute("aria-expanded", "true");
       updateScrollLock();
     };
 
     trigger.addEventListener("click", (event) => {
       event.stopPropagation();
       if (menu.classList.contains("open")) {
-        closeMenu();
+        closeMenus();
       } else {
         openMenu();
       }
     });
 
-    overlay.addEventListener("click", closeMenu);
+    notificationTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (notificationMenu.classList.contains("open")) {
+        closeMenus();
+      } else {
+        openNotifications();
+      }
+    });
+
+    overlay.addEventListener("click", closeMenus);
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeMenu();
+      if (event.key === "Escape") closeMenus();
     });
     document.addEventListener("click", (event) => {
-      if (!menu.contains(event.target) && !trigger.contains(event.target)) {
-        closeMenu();
+      const clickedInsideUserMenu = menu.contains(event.target) || trigger.contains(event.target);
+      const clickedInsideNotifications =
+        notificationMenu.contains(event.target) || notificationTrigger.contains(event.target);
+      if (!clickedInsideUserMenu && !clickedInsideNotifications) {
+        closeMenus();
       }
     });
 
@@ -1226,7 +1459,7 @@ const CYBRLYApp = (() => {
       const action = actionEl.dataset.action;
       if (!action) return;
       if (action === "logout") {
-        closeMenu();
+        closeMenus();
         return;
       }
       const session = getSession();
@@ -1299,6 +1532,32 @@ const CYBRLYApp = (() => {
     el.style.backgroundImage = "";
     el.classList.remove("has-image");
     el.textContent = fallbackText || "DP";
+  };
+
+  const syncDarkReaderLock = (isLight) => {
+    const head = document.head || document.querySelector("head");
+    const colorScheme = isLight ? "light" : "dark";
+
+    document.documentElement.style.colorScheme = colorScheme;
+    if (document.body) {
+      document.body.style.colorScheme = colorScheme;
+    }
+
+    if (!head) return;
+
+    let lockMeta = head.querySelector('meta[name="darkreader-lock"]');
+    if (isLight) {
+      if (!lockMeta) {
+        lockMeta = document.createElement("meta");
+        lockMeta.name = "darkreader-lock";
+        head.appendChild(lockMeta);
+      }
+      return;
+    }
+
+    if (lockMeta) {
+      lockMeta.remove();
+    }
   };
 
   const updateRangeValue = (key, value) => {
@@ -1388,6 +1647,7 @@ const CYBRLYApp = (() => {
     document.documentElement.classList.toggle("light-mode", isLight);
     document.body.classList.toggle("light-mode", isLight);
     document.body.classList.toggle("layout-compact", isCompact);
+    syncDarkReaderLock(isLight);
 
     document.documentElement.style.setProperty("--accent", accent);
     if (rgb) {
@@ -1843,7 +2103,7 @@ const CYBRLYApp = (() => {
         const copy = emptyState.querySelector("p");
         if (projects.length === 0) {
           if (heading) heading.textContent = "No projects yet";
-          if (copy) copy.textContent = "Upload a project to start building your CYBRLY grid.";
+          if (copy) copy.textContent = "Upload a project to start building your Codexia grid.";
         } else if (!adminView && !hasPublic) {
           if (heading) heading.textContent = "No public projects yet";
           if (copy) copy.textContent = "Public projects will appear here once they are published.";
@@ -3026,7 +3286,7 @@ const CYBRLYApp = (() => {
   };
 
   const getEmailJsConfig = () => {
-    const override = window.CYBRLY_EMAILJS || {};
+    const override = window.Codexia_EMAILJS || window.CYBRLY_EMAILJS || {};
     return {
       publicKey: override.publicKey || CONFIG.emailjsPublicKey,
       serviceId: override.serviceId || CONFIG.emailjsServiceId,
@@ -3196,6 +3456,11 @@ const CYBRLYApp = (() => {
 
   return {
     async init() {
+      if (CONFIG.maintenanceMode) {
+        applyMaintenanceMode();
+        return;
+      }
+
       migrateLegacyStorage();
       ensureAdmin();
       ensureProjectSeed();
@@ -3257,5 +3522,5 @@ const CYBRLYApp = (() => {
 })();
 
 document.addEventListener("DOMContentLoaded", () => {
-  CYBRLYApp.init();
+  CodexiaApp.init();
 });

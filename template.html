@@ -3,23 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CYBRLY | Templates</title>
+  <title>Codexia | Templates</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="style.css" />
-  <script id="CYBRLY-theme-init">
+  <script id="Codexia-theme-init">
     (function () {
       try {
-        var session = JSON.parse(localStorage.getItem("CYBRLY_session") || "null");
+        var session = JSON.parse(localStorage.getItem("Codexia_session") || localStorage.getItem("CYBRLY_session") || "null");
         if (!session || !session.loggedInUser) return;
         var email = session.loggedInUser;
-        var prefs = JSON.parse(localStorage.getItem("CYBRLY_prefs") || "{}");
-        var users = JSON.parse(localStorage.getItem("CYBRLY_users") || "{}");
+        var prefs = JSON.parse(localStorage.getItem("Codexia_prefs") || localStorage.getItem("CYBRLY_prefs") || "{}");
+        var users = JSON.parse(localStorage.getItem("Codexia_users") || localStorage.getItem("CYBRLY_users") || "{}");
         var theme = (prefs[email] && prefs[email].theme) || (users[email] && users[email].themePreference) || "dark";
-        if (theme === "light") {
-          document.documentElement.classList.add("light-mode");
+        var isLight = theme === "light";
+        document.documentElement.classList.toggle("light-mode", isLight);
+        document.documentElement.style.colorScheme = isLight ? "light" : "dark";
+        if (isLight && document.head && !document.head.querySelector('meta[name="darkreader-lock"]')) {
+          var darkReaderLock = document.createElement("meta");
+          darkReaderLock.name = "darkreader-lock";
+          document.head.appendChild(darkReaderLock);
         }
       } catch (e) {
         // no-op
@@ -31,7 +36,7 @@
   <div class="bg-grid"></div>
   <header class="site-header glass">
     <div class="container nav">
-      <a class="nav-logo glow-text" href="index.html">CYBRLY</a>
+      <a class="nav-logo glow-text" href="index.html">Codexia</a>
       <nav class="nav-links">
         <a href="project.html">Projects</a>
         <a href="service.html">Services</a>
@@ -42,7 +47,7 @@
     <span class="profile-avatar" data-profile-avatar>DP</span>
     <span class="profile-meta">
       <span class="profile-label">Logged in</span>
-      <span class="profile-email" data-profile-email>user@CYBRLY.io</span>
+      <span class="profile-email" data-profile-email>user@Codexia.io</span>
     </span>
   </button>
   <a class="btn btn-ghost" href="login.html" data-auth-link="login">Login</a>
@@ -63,8 +68,8 @@
     <div class="user-menu-info">
   <span class="profile-avatar" data-user-avatar>DP</span>
   <div>
-    <p class="profile-name" data-user-name>CYBRLY User</p>
-    <p class="profile-email" data-user-email>user@CYBRLY.io</p>
+    <p class="profile-name" data-user-name>Codexia User</p>
+    <p class="profile-email" data-user-email>user@Codexia.io</p>
     <p class="profile-bio" data-user-bio>Neon system builder.</p>
     <div class="profile-meta-row">
       <span class="role-badge" data-user-role-badge>User</span>
@@ -248,7 +253,7 @@
 
   <footer class="footer">
     <div class="container footer-inner">
-      <p>CYBRLY © 2026.</p>
+      <p>Codexia © 2026.</p>
       <div class="footer-links">
         <a class="footer-icon" href="https://github.com/MysTry-CTRL" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
